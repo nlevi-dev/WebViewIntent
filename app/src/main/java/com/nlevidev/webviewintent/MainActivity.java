@@ -13,42 +13,36 @@ import android.widget.TextView;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
+import java.util.Objects;
+
 public class MainActivity extends AppCompatActivity {
 
+    private static final String[] blacklistAny = {};
+    private static final String[] blacklistPrefixes = {"","http://","https://","www.","http://www.","https://www."};
+    private static final String[] blacklistStart = {};
     private WebView webView;
-    private ActionBar actionBar;
     private ProgressBar progressBar;
     private TextView titleView;
     private String currentUrl = "";
 
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        Objects.requireNonNull(getSupportActionBar()).hide();
 
-        actionBar = getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.setBackgroundDrawable(
-                    new android.graphics.drawable.ColorDrawable(
-                            getResources().getColor(R.color.black, getTheme())
-                    )
-            );
-            actionBar.setDisplayShowTitleEnabled(false);
-            actionBar.setDisplayShowCustomEnabled(true);
-            actionBar.setCustomView(R.layout.actionbar_title);
-
-            titleView = actionBar.getCustomView().findViewById(R.id.actionbar_title);
-            progressBar = actionBar.getCustomView().findViewById(R.id.actionbar_progress);
-
-            titleView.setOnClickListener(v -> copyUrlToClipboard());
-        }
+        titleView = findViewById(R.id.actionbar_title);
+        titleView.setOnClickListener(v -> copyUrlToClipboard());
+        progressBar = findViewById(R.id.actionbar_progress);
 
         webView = findViewById(R.id.webview);
 
@@ -72,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+                checkBlacklistAndQuit(uri.toString());
                 String scheme = uri.getScheme();
                 if (scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
                     view.loadUrl(uri.toString());
@@ -115,9 +110,36 @@ public class MainActivity extends AppCompatActivity {
         handleIntent(intent);
     }
 
+    private void checkBlacklistAndQuit(String url) {
+        url = url.toLowerCase();
+        String urlBeforeQuery = url.split("\\?")[0];
+        for (String black : blacklistAny) {
+            black = black.toLowerCase();
+            if (urlBeforeQuery.contains(black)) {
+                showBlacklistToastAndQuit();
+                return;
+            }
+        }
+        for (String prefix : blacklistPrefixes) {
+            for (String start : blacklistStart) {
+                String black = (prefix + start).toLowerCase();
+                if (url.startsWith(black)) {
+                    showBlacklistToastAndQuit();
+                    return;
+                }
+            }
+        }
+    }
+
+    private void showBlacklistToastAndQuit() {
+        Toast.makeText(this, "Blacklisted activity!", Toast.LENGTH_LONG).show();
+        System.exit(0);
+    }
+
     private void handleIntent(Intent intent) {
         Uri data = intent.getData();
         if (data != null) {
+            checkBlacklistAndQuit(data.toString());
             webView.loadUrl(data.toString());
         } else {
             webView.loadUrl("https://example.com");
