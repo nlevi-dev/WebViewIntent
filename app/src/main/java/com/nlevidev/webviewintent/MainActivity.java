@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] blacklistAny = {};
     private static final String[] blacklistPrefixes = {"","http://","https://","www.","http://www.","https://www."};
     private static final String[] blacklistStart = {};
+    private static final String[] whitelistStart = {"google.com/url?q="};
     private WebView webView;
     private ProgressBar progressBar;
     private TextView titleView;
@@ -121,8 +122,17 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         for (String prefix : blacklistPrefixes) {
-            for (String start : blacklistStart) {
-                String black = (prefix + start).toLowerCase();
+            for (String blackStart : blacklistStart) {
+                boolean whitelisted = false;
+                for (String whiteStart : whitelistStart) {
+                    String white = (prefix + whiteStart).toLowerCase();
+                    if (url.startsWith(white)) {
+                        whitelisted = true;
+                        break;
+                    }
+                }
+                if (whitelisted) continue;
+                String black = (prefix + blackStart).toLowerCase();
                 if (url.startsWith(black)) {
                     showBlacklistToastAndQuit();
                     return;
